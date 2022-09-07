@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 
+const { MONGO_CONNECTION_STRING } = process.env;
 module.exports = mongoose
-  .connect(
-    "mongodb+srv://admin-claudia:ofrldrg87ytBHmhE@cluster0.oot7e.mongodb.net/lecture-prep?retryWrites=true&w=majority"
-  )
+  .connect(MONGO_CONNECTION_STRING)
   .then(() => console.log("Connected successfully to MongoDB"))
   .catch((e) => console.log(e));

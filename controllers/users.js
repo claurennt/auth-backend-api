@@ -1,64 +1,68 @@
-const bcrypt = require("bcrypt");
 const User = require("../models/User");
+const bcrypt = require("bcrypt");
 
-const register_new_user = async (req, res, next) => {
-  const { email, password, username, role } = req.body;
+const create_new_user = async (req, res, next) => {
+  const { username, password, email } = req.body;
 
-  if (!email || !password || !username) {
-    return res.status(400).json({ message: "Missing fields" });
+  if (!username || !password || !email) {
+    return res.status(400).send("Please provide all the fields.");
   }
   try {
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
 
     if (userExists) {
-      return res.status(400).json({
-        message: "User with this username and/or email already exists",
-      });
+      return res
+        .status(400)
+        .send("Username and/or email are already being used");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log(hashedPassword);
 
     const registeredUser = await User.create({
+      username,
       email,
       password: hashedPassword,
-      username,
-      role: role && role,
     });
 
-    const token = registeredUser.createToken();
-
-    return res
-      .set("x-authorization-token", token)
+    const token = registeredUser.generateToken();
+    res
+      .set("token", token)
       .status(201)
-      .send("Successfully created new user");
+      .json({
+        message: "successfully created new admin",
+        registeredUser: {
+          username: registeredUser.username,
+          _id: registeredUser._id,
+          email: registeredUser.email,
+        },
+      });
   } catch (err) {
     console.log(err);
     next(err);
   }
 };
 
-const get_user_context = async (req, res, next) => {
-  const { user } = req;
-  return res.status(200).send(user);
+const get_all_users = async (req, res, next) => {
+  const allUsers = await User.find();
+  res.status(200).send(allUsers);
 };
 
-const update_field_of_user = async (req, res, next) => {
-  const { user } = req;
+const update_field_of_self = async (req, res, next) => {
+  const me = req.user;
 
-  const condition = Object.entries(req.body);
+  const condition = req.body;
 
-  if (!condition.length) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
   try {
-    const updatedUser = await User.findByIdAndUpdate(user._id, req.body, {
+    const updatedUser = await User.findByIdAndUpdate(me._id, condition, {
       new: true,
     });
-
-    return res.status(200).send(updatedUser);
+    console.log(updatedUser);
+    return res.status(200).json({ message: "Successfully updated user" });
   } catch (err) {
     console.log(err);
     next(err);
   }
 };
-module.exports = { register_new_user, get_user_context, update_field_of_user };
+
+module.exports = { create_new_user, get_all_users, update_field_of_self };
